@@ -1,0 +1,195 @@
+
+
+package org.firstinspires.ftc.teamcode.TeleOp;
+
+import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.util.ElapsedTime;
+import com.qualcomm.robotcore.hardware.DigitalChannel;
+
+@TeleOp (name = "Greece", group ="TeleOp")
+public class Greece extends LinearOpMode {
+    private DcMotor leftFront;
+    private DcMotor leftBack;
+    private DcMotor rightFront;
+    private DcMotor rightBack;
+    private DcMotor lift_system_1;
+    private DcMotor lift_system_2;
+    private Servo forward_door_1;
+    private Servo forward_door_2;
+    private Servo backward_door_1;
+    private Servo backward_door_2;
+    private Servo arm_1;
+    private Servo arm_2; //интейк
+    DigitalChannel touchSensor_1;
+    DigitalChannel touchSensor_2;
+
+    private double targetArm_1 = 0.0 ;
+    private double targetArm_2 = 0.0;
+    private double speed = 1.0;
+    private ElapsedTime timer;
+    private double delayBetweenServos = 0.5;
+
+//    private boolean armMovementTriggered = false;
+
+
+    @Override
+    public void runOpMode() {
+        // Инициализация моторов и сервоприводов
+        initHardware();
+
+        arm_1.setPosition(0);
+        arm_2.setPosition(0.48);
+
+        timer = new ElapsedTime();
+
+        // Ожидание старта матча
+        waitForStart();
+
+        // Основной цикл управления роботом
+        while (opModeIsActive()) {
+            double deltaTime = timer.seconds();
+            driveRobot();
+            controlLiftSystem();
+            controlServoSystem();
+            controlIntakeSystem();
+            updateArmPosition(deltaTime);
+        }
+    }
+    private void initHardware() {
+        leftFront = hardwareMap.dcMotor.get("leftFront");
+        leftBack = hardwareMap.dcMotor.get("leftBack");
+        rightFront = hardwareMap.dcMotor.get("rightFront");
+        rightBack = hardwareMap.dcMotor.get("rightBack");
+        lift_system_1 = hardwareMap.dcMotor.get("lift_system_1");
+        lift_system_2 = hardwareMap.dcMotor.get("lift_system_2");
+        forward_door_1 = hardwareMap.get(Servo.class, "forward_door_1");
+        forward_door_2 = hardwareMap.get(Servo.class, "forward_door_2");
+        backward_door_1 = hardwareMap.get(Servo.class, "backward_door_1");
+        backward_door_2 = hardwareMap.get(Servo.class, "backward_door_2");
+        arm_1 = hardwareMap.get(Servo.class, "arm_1");
+        arm_2 = hardwareMap.get(Servo.class, "arm_2");
+        touchSensor_1 = hardwareMap.digitalChannel.get("touchSensor_1");
+        touchSensor_1.setMode(DigitalChannel.Mode.INPUT);
+        touchSensor_2 = hardwareMap.digitalChannel.get("touchSensor_2");
+        touchSensor_2.setMode(DigitalChannel.Mode.INPUT);
+        rightFront.setDirection(DcMotorSimple.Direction.REVERSE);
+        rightBack.setDirection(DcMotorSimple.Direction.REVERSE);
+        lift_system_1.setDirection(DcMotorSimple.Direction.REVERSE);
+        forward_door_2.setDirection(Servo.Direction.REVERSE);
+        backward_door_1.setDirection(Servo.Direction.REVERSE);
+        lift_system_1.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        lift_system_2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+    }
+
+    private void driveRobot() {
+        double drive = gamepad1.left_stick_y;  // Вперед/назад
+        double turn = gamepad1.right_stick_x;  // Повороты
+
+        double leftPower = drive + turn;
+        double rightPower = drive - turn;
+
+        leftFront.setPower(leftPower);
+        leftBack.setPower(leftPower);
+        rightFront.setPower(rightPower);
+        rightBack.setPower(rightPower);
+    }
+
+    private void controlLiftSystem() {
+        boolean isTouching1 = !touchSensor_1.getState();
+        boolean isTouching2 = !touchSensor_2.getState();
+
+        if (isTouching1) {
+            if (gamepad1.right_bumper) {
+                lift_system_1.setPower(-0.98);
+            } else {
+                lift_system_1.setPower(0);
+            }
+            telemetry.addData("Touch Sensor 1 State", "Activated");
+        } else {
+            if (gamepad1.right_bumper) {
+                lift_system_1.setPower(-0.98);
+            } else if (gamepad1.left_bumper) {
+                lift_system_1.setPower(0.93);
+            } else {
+                lift_system_1.setPower(0);
+            }
+        }
+
+        if (isTouching2) {
+            if (gamepad1.right_bumper) {
+                lift_system_2.setPower(-1);
+            } else {
+                lift_system_2.setPower(0);
+            }
+            telemetry.addData("Touch Sensor 2 State", "Activated");
+        } else {
+            if (gamepad1.right_bumper) {
+                lift_system_2.setPower(-1);
+            } else if (gamepad1.left_bumper) {
+                lift_system_2.setPower(1);
+            } else {
+                lift_system_2.setPower(0);
+            }
+        }
+
+        telemetry.update();
+    }
+
+
+    private void controlServoSystem() {
+
+        if(gamepad2.right_bumper) {
+            forward_door_1.setPosition(0.55);
+        } else {
+            forward_door_1.setPosition(0.08);
+        }
+
+        if(gamepad2.left_bumper) {
+            forward_door_2.setPosition(0.5);
+        } else {
+            forward_door_2.setPosition(0.01);
+        }
+
+        if(gamepad2.right_trigger > 0) {
+            backward_door_1.setPosition(0.5); //черный тейп
+            backward_door_2.setPosition(0.35);
+        } else {
+            backward_door_1.setPosition(0.15);
+            backward_door_2.setPosition(0);
+        }
+    }
+
+    private void controlIntakeSystem() {
+
+        if(gamepad1.dpad_up) {
+            targetArm_1 = 0.5;
+            targetArm_2 = 0;
+            timer.reset();
+//            armMovementTriggered = true;
+        } else if (gamepad1.dpad_down){
+            targetArm_1 = 0;
+            targetArm_2 = 0.48;
+            timer.reset();
+//            armMovementTriggered = true;
+        }
+    }
+
+    private void updateArmPosition(double deltaTime) {
+//        if(armMovementTriggered) return;
+
+        double currentPos1 = arm_1.getPosition();
+        double newPos1 = currentPos1 + Math.min(targetArm_1 - currentPos1, speed * deltaTime);
+        arm_1.setPosition(newPos1);
+
+        if (timer.seconds() >= delayBetweenServos) {
+            double currentPos2 = arm_2.getPosition();
+            double newPos2 = currentPos2 + Math.min(targetArm_2 - currentPos2, speed * deltaTime);
+            arm_2.setPosition(newPos2);
+        }
+    }
+
+}
